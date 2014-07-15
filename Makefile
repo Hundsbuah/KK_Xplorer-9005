@@ -1,7 +1,7 @@
 VERSION = 3
 PATCHLEVEL = 4
 SUBLEVEL = 39
-EXTRAVERSION =~CivZ-KK_Xplorer-Rev1.4-N900T~
+EXTRAVERSION =~CivZ_Lowi-KK_Xplorer-Rev1.4-N900T~
 NAME = Saber-toothed Squirrel
 
 # *DOCUMENTATION*

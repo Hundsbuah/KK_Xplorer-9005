@@ -46,6 +46,8 @@
 
 static DEFINE_MUTEX(intelli_plug_mutex);
 
+static struct kobject *nr_run_thresholds_cfg_kobj;
+
 static struct delayed_work intelli_plug_work;
 static struct delayed_work intelli_plug_boost;
 
@@ -96,6 +98,13 @@ defined (CONFIG_ARCH_MSM8610) || defined (CONFIG_ARCH_MSM8228)
 
 static unsigned int nr_fshift = NR_FSHIFT;
 
+static unsigned int nr_run_thresholds_user[] = {
+	(THREAD_CAPACITY * 380 * MULT_FACTOR) / DIV_FACTOR,
+	(THREAD_CAPACITY * 625 * MULT_FACTOR) / DIV_FACTOR,
+	(THREAD_CAPACITY * 875 * MULT_FACTOR) / DIV_FACTOR,
+	UINT_MAX
+};
+
 static unsigned int nr_run_thresholds_balance[] = {
 	(THREAD_CAPACITY * 625 * MULT_FACTOR) / DIV_FACTOR,
 	(THREAD_CAPACITY * 875 * MULT_FACTOR) / DIV_FACTOR,
@@ -138,6 +147,7 @@ static unsigned int *nr_run_profiles[] = {
 	nr_run_thresholds_eco,
 	nr_run_thresholds_eco_extreme,
 	nr_run_thresholds_disable,
+    nr_run_thresholds_user,
 };
 
 #define NR_RUN_ECO_MODE_PROFILE	3
@@ -516,6 +526,53 @@ static struct input_handler intelli_plug_input_handler = {
 	.id_table       = intelli_plug_ids,
 };
 
+static ssize_t
+nr_run_thresholds_user_show(struct kobject *kobj, struct kobj_attribute *attr,
+		    char *buf)
+{
+   unsigned int idx;
+   int ret = 0;
+
+   for(idx = 0; idx < 3; idx++)
+   {
+	  ret += sprintf (&buf[ret], "%i ", nr_run_thresholds_user[idx]);
+   }
+
+   ret += sprintf(&buf[ret], "\n");
+
+   return ret;
+}
+
+static ssize_t
+nr_run_thresholds_user_store(struct kobject *kobj, struct kobj_attribute *attr,
+		     const char *buf, size_t count)
+{
+	int rt_cfg;
+	int ret;
+	char size_cur[16];
+	int idx;
+
+	for(idx = 0; idx < 3; idx++)
+	{
+		ret = sscanf(buf, "%i", &rt_cfg);
+		if (ret != 1)
+			return -EINVAL;
+		nr_run_thresholds_user[idx] = rt_cfg;
+		ret = sscanf(buf, "%s", size_cur);
+		buf += (strlen(size_cur)+1);
+	}
+
+    return count;
+}
+
+static struct kobj_attribute nr_run_thresholds_cfg_attribute =
+	__ATTR(set_user_profile_idx_6, 0644, nr_run_thresholds_user_show, nr_run_thresholds_user_store);
+
+const struct attribute *nr_run_thresholds_cfg_attributes[] = {
+	&nr_run_thresholds_cfg_attribute.attr,
+	NULL,
+};
+
 int __init intelli_plug_init(void)
 {
 	int rc;
@@ -549,6 +606,16 @@ int __init intelli_plug_init(void)
 	INIT_DELAYED_WORK(&intelli_plug_boost, intelli_plug_boost_fn);
 	queue_delayed_work_on(0, intelliplug_wq, &intelli_plug_work,
 		msecs_to_jiffies(10));
+
+	nr_run_thresholds_cfg_kobj = kobject_create_and_add("intelli_plug", kernel_kobj);
+	if (!nr_run_thresholds_cfg_kobj) {
+		pr_err("intelliplug: failed to create sysfs nr_run_thresholds_user object");
+		return 0;
+	}
+	if (sysfs_create_files(nr_run_thresholds_cfg_kobj, nr_run_thresholds_cfg_attributes)) {
+		pr_err("intelliplug: failed to create sysfs nr_run_thresholds_user interface");
+		return 0;
+	}
 
 	return 0;
 }

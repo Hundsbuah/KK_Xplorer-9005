@@ -147,10 +147,11 @@ static unsigned int *nr_run_profiles[] = {
 	nr_run_thresholds_eco,
 	nr_run_thresholds_eco_extreme,
 	nr_run_thresholds_disable,
-    nr_run_thresholds_user,
+   nr_run_thresholds_user,
 };
 
 #define NR_RUN_ECO_MODE_PROFILE	3
+#define NR_RUN_USER_MODE_PROFILE 6
 #define NR_RUN_HYSTERESIS_QUAD	8
 #define NR_RUN_HYSTERESIS_DUAL	4
 
@@ -179,20 +180,29 @@ static unsigned int calculate_thread_stats(void)
 
 	current_profile = nr_run_profiles[nr_run_profile_sel];
 	if (num_possible_cpus() > 2) {
-		if (nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
-			threshold_size =
-				ARRAY_SIZE(nr_run_thresholds_eco);
-		else
-			threshold_size =
-				ARRAY_SIZE(nr_run_thresholds_balance);
+      if (nr_run_profile_sel == NR_RUN_USER_MODE_PROFILE) {
+         threshold_size =
+				            ARRAY_SIZE(nr_run_thresholds_user);
+      } else {
+		   if (nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
+			   threshold_size =
+				   ARRAY_SIZE(nr_run_thresholds_eco);
+		   else
+			   threshold_size =
+				   ARRAY_SIZE(nr_run_thresholds_balance);
+      }
 	} else
 		threshold_size =
 			ARRAY_SIZE(nr_run_thresholds_eco);
-
-	if (nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
-		nr_fshift = 1;
-	else
-		nr_fshift = num_possible_cpus() - 1;
+   
+   if ((nr_run_profile_sel == NR_RUN_USER_MODE_PROFILE) && (num_possible_cpus() > 2))
+      nr_fshift = num_possible_cpus() - 1;
+   else {
+	   if (nr_run_profile_sel >= NR_RUN_ECO_MODE_PROFILE)
+		   nr_fshift = 1;
+	   else
+		   nr_fshift = num_possible_cpus() - 1;
+   }
 
 	for (nr_run = 1; nr_run < threshold_size; nr_run++) {
 		unsigned int nr_threshold;
